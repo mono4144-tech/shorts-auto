@@ -48,6 +48,7 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
 <nav><button data-tab="today" class="on">오늘</button><button data-tab="pick">이미지 고르기</button><button data-tab="set">설정</button></nav></div></header>
 <main>
 <div id="bal" class="card sub hide" style="padding:10px 14px"></div>
+<div id="cost" class="card sub hide" style="padding:10px 14px"></div>
 
 <section id="tab-today">
   <div class="row" style="justify-content:space-between;margin-bottom:8px"><b id="todayTitle">오늘</b>
@@ -73,6 +74,10 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
   <div class="card"><h2>자동 업로드 멈추기</h2>
     <div class="sub">멈추면 내일부터 영상을 만들지도, 올리지도 않아요. 이미 예약된 글은 업리카에서 지워야 해요.</div>
     <p></p><button class="btn ghost" id="pauseBtn">…</button> <span id="pauseMsg" class="sub"></span>
+  </div>
+  <div class="card"><h2>Kling 유닛 가격</h2>
+    <div class="sub">충전할 때 낸 금액 ÷ 받은 유닛 수를 넣어 주세요 (예: 1,000유닛을 140,000원에 샀다면 140). '오늘' 탭의 사용 금액 계산에 써요.</div>
+    <p></p><input id="unitWon" type="number" min="0" step="0.1" placeholder="1유닛당 원" style="max-width:160px"> <button class="btn" id="saveWon">저장</button> <span id="wonMsg" class="sub"></span>
   </div>
   <div class="card"><h2>올리는 시간</h2><div id="slotInfo" class="sub"></div></div>
 </section>
@@ -113,12 +118,22 @@ $('#dayPick').value=kstDate();$('#dayPick').onchange=loadToday;$('#reload').oncl
 function stepPill(st){if(st.error&&st.step!=='done')return `<span class="pill bad">문제 있음</span>`;
   return {undefined:'<span class="pill">기다리는 중</span>',making:'<span class="pill wait">영상 만드는 중…</span>',video:'<span class="pill wait">썸네일 만드는 중</span>',thumb:'<span class="pill wait">업로드 준비</span>',
     posted:'<span class="pill ok">인스타·틱톡 예약됨</span>',done:'<span class="pill ok">인스타·틱톡 예약됨</span>',failed_video:'<span class="pill bad">영상 실패</span>'}[st.step]||`<span class="pill">${esc(st.step)}</span>`}
+let BAL=null;
+function renderCost(ds,st){const el=$('#cost');if(!el)return;const sl=(st&&st.slots)||{};let units=0,n=0;
+  for(const k in sl){const u=Number(sl[k].units||0);if(u>0){units+=u;n++}}
+  const won=CFG&&CFG.kling_won_per_unit?Number(CFG.kling_won_per_unit):0;
+  const rem=BAL?Math.floor(BAL.remaining):null,perDay=((CFG&&CFG.slots)||[]).length*35;
+  el.classList.remove('hide');
+  el.innerHTML=`<b>${ds===kstDate()?'오늘':fmtDay(ds)} 사용</b> · 영상 ${n}개 · Kling <b>${units.toFixed(1)}</b>유닛`+
+    (won?` · 약 <b>${Math.round(units*won).toLocaleString()}원</b>`:` · <span class="sub">금액은 설정 탭에 유닛 가격을 넣으면 보여요</span>`)+
+    (rem!=null?`<br>남은 유닛 <b>${rem.toLocaleString()}</b>${won?` (약 ${Math.round(rem*won).toLocaleString()}원어치)`:''} · 하루 약 ${perDay}유닛 쓰면 <b>${Math.floor(rem/perDay)}일</b> 버텨요`+(rem<perDay*2?' <span style="color:var(--bad);font-weight:700">· 충전해 주세요</span>':''):'')}
 async function loadToday(){const ds=$('#dayPick').value||kstDate(),box=$('#slots');$('#todayTitle').textContent=fmtDay(ds)+(ds===kstDate()?' · 오늘':'');
   box.innerHTML='<div class="sub">불러오는 중…</div>';
   try{const [st]=await readJson(`auto/state/${ds}.json`);const [daily]=await readJson(`daily/${ds}.json`);if(!CFG)[CFG,CFGSHA]=await readJson('auto/config.json');
     const slots=(CFG&&CFG.slots)||[];box.innerHTML='';
     if(!daily)box.insertAdjacentHTML('beforeend',`<div class="card notice">이 날 대본이 아직 shorts-maker로 넘어오지 않았어요. 매일 새벽 5시 반쯤 넘어와요.</div>`);
     if(st&&st.error)box.insertAdjacentHTML('beforeend',`<div class="card notice badn">${esc(st.error)}</div>`);
+    renderCost(ds,st);
     for(const sl of slots){const s=((st&&st.slots)||{})[sl.key]||{};const set=daily?(daily.sets||[]).find(x=>x.id===`${sl.account}-${ds.replace(/-/g,'')}-${sl.set}`):null;
       const d=document.createElement('div');d.className='card';
       const fb=s.fb||{},fbCap=fb.caption||(set&&set.fb&&set.fb.caption)||'',fbPin=fb.pin||(set&&set.fb&&set.fb.pin)||'';
@@ -190,12 +205,14 @@ async function loadPick(){renderWeeks();const box=$('#pickDays');box.innerHTML='
 /* ── 설정 ── */
 $('#tok').value=TOK;$('#copyTok').onclick=async()=>{const v=$('#tok').value.trim();if(!v){$('#tokMsg').textContent='저장된 토큰이 없어요.';return}try{await navigator.clipboard.writeText(v);$('#tokMsg').textContent='복사했어요. 카톡 나에게 보내기 등으로 폰에 옮겨 붙여 넣으세요.'}catch(e){$('#tok').type='text';$('#tok').select();$('#tokMsg').textContent='표시된 토큰을 길게 눌러 복사하세요.'}};$('#saveTok').onclick=()=>{TOK=$('#tok').value.trim();store.set('sa_tok',TOK);$('#tokMsg').textContent='저장했어요.';init()};
 async function renderSet(){try{[CFG,CFGSHA]=await readJson('auto/config.json');}catch(e){}if(!CFG)return;
+  $('#unitWon').value=CFG.kling_won_per_unit||'';
   $('#pauseBtn').textContent=CFG.paused?'▶ 다시 켜기':'⏸ 자동 업로드 멈추기';
   $('#slotInfo').innerHTML=CFG.slots.map(s=>`${esc(NAMES[s.key]||s.key)} · <b>${esc(s.time)}</b>`).join('<br>')+'<br><br>시간을 바꾸려면 Claude에게 말해 주세요.'}
+$('#saveWon').onclick=async()=>{try{const [c,sh]=await readJson('auto/config.json');const v=Number($('#unitWon').value);c.kling_won_per_unit=v>0?v:null;await writeJson('auto/config.json',c,sh,'kling unit price');CFG=c;$('#wonMsg').textContent='저장했어요.'}catch(e){alert(e.message)}};
 $('#pauseBtn').onclick=async()=>{try{const [c,s]=await readJson('auto/config.json');c.paused=!c.paused;await writeJson('auto/config.json',c,s,c.paused?'pause auto':'resume auto');CFG=c;$('#pauseMsg').textContent=c.paused?'멈췄어요.':'다시 켰어요.';renderSet()}catch(e){alert(e.message)}};
-async function loadBal(){try{const [b]=await readJson('status/balance.json');if(!b)return;const u=Math.floor(b.remaining),el=$('#bal');el.classList.remove('hide');
+async function loadBal(){try{const [b]=await readJson('status/balance.json');if(!b)return;BAL=b;const u=Math.floor(b.remaining),el=$('#bal');el.classList.remove('hide');
   el.innerHTML=`Kling 남은 유닛 <b>${u.toLocaleString()}</b> · 40초 영상 약 ${Math.floor(u/33)}개${u<100?' <span style="color:var(--bad);font-weight:700">· 곧 떨어져요. 충전해 주세요</span>':''}`}catch(e){}}
-function init(){if(!TOK){$$('nav button')[2].click();$('#tokMsg').textContent='처음 한 번 토큰을 넣어 주세요.';return}loadBal();loadToday()}
+function init(){if(!TOK){$$('nav button')[2].click();$('#tokMsg').textContent='처음 한 번 토큰을 넣어 주세요.';return}loadBal().then(loadToday)}
 init();
 </script>
 </body></html>
