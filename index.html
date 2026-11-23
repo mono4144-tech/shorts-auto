@@ -156,6 +156,9 @@ async function loadToday(){const ds=$('#dayPick').value||kstDate(),box=$('#slots
   }catch(e){box.innerHTML=`<div class="card notice badn">불러오지 못했어요: ${esc(e.message)}<br>설정 탭에서 토큰을 확인해 주세요.</div>`}}
 
 /* ── 이미지 고르기 ── */
+let SAVING=false;
+async function savePick(ds,key,nv){let last;for(let t=0;t<4;t++){try{const [pl,s2]=await readJson(`plan/${WEEK}.json`);pl.days[ds][key].chosen=nv;
+  await writeJson(`plan/${WEEK}.json`,pl,s2,`pick ${ds} ${key}`);return}catch(err){last=err;if(!/409|422|sha/i.test(err.message))throw err;await new Promise(r=>setTimeout(r,1500*(t+1)))}}throw last}
 let WEEK=mondayOf(addDays(kstDate(),1));
 function renderWeeks(){const cur=mondayOf(kstDate()),list=[cur,addDays(cur,7)];
   $('#weeks').innerHTML=list.map(m=>`<button data-m="${m}" class="${m===WEEK?'on':''}">${m===cur?'이번 주':'다음 주'} (${fmtDay(m)}~)</button>`).join('');
@@ -173,7 +176,8 @@ async function loadPick(){renderWeeks();const box=$('#pickDays');box.innerHTML='
           el.innerHTML=`${e.chosen===i?'<span class="chk">✓ 이걸로</span>':''}<img alt=""><div class="cap">${i+1}. 👗 ${esc(c.o)}<br>🏞 ${esc(c.b||'')}</div>`;
           rawUrl(c.img).then(u=>{if(u)el.querySelector('img').src=u});
           el.querySelector('img').ondblclick=ev=>{ev.stopPropagation();zoomImg(el.querySelector('img').src)};
-          el.onclick=async()=>{const nv=e.chosen===i?null:i;try{const [pl,s2]=await readJson(`plan/${WEEK}.json`);pl.days[ds][key].chosen=nv;await writeJson(`plan/${WEEK}.json`,pl,s2,`pick ${ds} ${key}`);e.chosen=nv;loadPick()}catch(err){alert('저장 못 했어요: '+err.message)}};
+          el.onclick=async()=>{if(SAVING)return;SAVING=true;const nv=e.chosen===i?null:i;el.style.opacity=.5;
+            try{await savePick(ds,key,nv);e.chosen=nv;loadPick()}catch(err){el.style.opacity=1;$('#pickMsg').innerHTML=`<div class="notice badn">저장 못 했어요. 잠시 뒤 다시 눌러 주세요. (${esc(err.message.slice(0,120))})</div>`}SAVING=false};
           pair.appendChild(el)});
         r.querySelector('[data-regen]').onclick=async ev=>{if(!confirm('이 칸 이미지 2장을 새로 만들까요? (약 120원)'))return;ev.target.disabled=true;
           await writeJson(`plan/requests/${Date.now()}.json`,{date:ds,slot:key},null,`regen ${ds} ${key}`);ev.target.textContent='만드는 중… 2~3분 뒤 새로고침'};
