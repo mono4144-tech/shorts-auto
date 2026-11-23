@@ -68,7 +68,7 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
   <div class="card"><h2>GitHub 연결</h2>
     <div class="sub">쇼츠 제작소에 넣은 것과 같은 GitHub 토큰(github_pat_…)을 넣어 주세요. 이 기기 브라우저에만 저장돼요. 핸드폰에서도 한 번 넣어 주면 돼요.</div>
     <label class="sub" style="display:block;margin-top:10px">토큰</label><input type="password" id="tok" placeholder="github_pat_...">
-    <p></p><button class="btn" id="saveTok">저장</button> <span id="tokMsg" class="sub"></span>
+    <p></p><button class="btn" id="saveTok">저장</button> <button class="btn" id="copyTok">토큰 복사</button> <span id="tokMsg" class="sub"></span>
   </div>
   <div class="card"><h2>자동 업로드 멈추기</h2>
     <div class="sub">멈추면 내일부터 영상을 만들지도, 올리지도 않아요. 이미 예약된 글은 업리카에서 지워야 해요.</div>
@@ -188,7 +188,7 @@ async function loadPick(){renderWeeks();const box=$('#pickDays');box.innerHTML='
   }catch(e){box.innerHTML=`<div class="card notice badn">불러오지 못했어요: ${esc(e.message)}</div>`}}
 
 /* ── 설정 ── */
-$('#tok').value=TOK;$('#saveTok').onclick=()=>{TOK=$('#tok').value.trim();store.set('sa_tok',TOK);$('#tokMsg').textContent='저장했어요.';init()};
+$('#tok').value=TOK;$('#copyTok').onclick=async()=>{const v=$('#tok').value.trim();if(!v){$('#tokMsg').textContent='저장된 토큰이 없어요.';return}try{await navigator.clipboard.writeText(v);$('#tokMsg').textContent='복사했어요. 카톡 나에게 보내기 등으로 폰에 옮겨 붙여 넣으세요.'}catch(e){$('#tok').type='text';$('#tok').select();$('#tokMsg').textContent='표시된 토큰을 길게 눌러 복사하세요.'}};$('#saveTok').onclick=()=>{TOK=$('#tok').value.trim();store.set('sa_tok',TOK);$('#tokMsg').textContent='저장했어요.';init()};
 async function renderSet(){try{[CFG,CFGSHA]=await readJson('auto/config.json');}catch(e){}if(!CFG)return;
   $('#pauseBtn').textContent=CFG.paused?'▶ 다시 켜기':'⏸ 자동 업로드 멈추기';
   $('#slotInfo').innerHTML=CFG.slots.map(s=>`${esc(NAMES[s.key]||s.key)} · <b>${esc(s.time)}</b>`).join('<br>')+'<br><br>시간을 바꾸려면 Claude에게 말해 주세요.'}
