@@ -165,7 +165,7 @@ function renderWeeks(){const cur=mondayOf(kstDate()),list=[cur,addDays(cur,7)];
   $$('#weeks button').forEach(b=>b.onclick=()=>{WEEK=b.dataset.m;loadPick()})}
 async function loadPick(){renderWeeks();const box=$('#pickDays');box.innerHTML='<div class="sub">불러오는 중…</div>';$('#pickMsg').innerHTML='';
   try{let [plan,sha]=await readJson(`plan/${WEEK}.json`);
-    if(!plan||!Object.keys(plan.days||{}).length){box.innerHTML='';$('#pickMsg').innerHTML=`<div class="notice">이 주 이미지 후보가 아직 없어요. 다음 주 후보는 일요일 저녁 7시에 자동으로 만들어져요.<p></p><button class="btn small" id="mkWeek">지금 만들기 (약 40장 · 2,500원쯤)</button></div>`;
+    if(!plan||!Object.keys(plan.days||{}).length){box.innerHTML='';$('#pickMsg').innerHTML=`<div class="notice">이 주 이미지 후보가 아직 없어요. 다음 주 후보는 일요일 새벽 1시에 자동으로 만들어져요.<p></p><button class="btn small" id="mkWeek">지금 만들기 (약 40장 · 2,500원쯤)</button></div>`;
       $('#mkWeek').onclick=async e=>{e.target.disabled=true;await writeJson(`plan/requests/${Date.now()}.json`,{type:'week',monday:WEEK},null,'make week '+WEEK);e.target.textContent='만드는 중이에요. 5~10분 뒤 새로고침해 주세요.'};return}
     box.innerHTML='';const today=kstDate();
     for(const ds of Object.keys(plan.days).sort()){if(ds<today)continue;const day=document.createElement('div');day.className='card day';day.innerHTML=`<b>${fmtDay(ds)}${ds===today?' · 오늘':''}</b>`;
