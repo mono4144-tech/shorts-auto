@@ -3,6 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>쇼츠 자동 관리</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#f6f4f0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="쇼츠관리">
 <style>
 :root{--bg:#f6f4f0;--card:#fff;--ink:#1d1b18;--sub:#6f6a62;--line:#e6e1d8;--accent:#c2410c;--accent2:#fff1e8;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--fb:#1877f2}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
@@ -154,6 +161,7 @@ async function loadToday(){const ds=$('#dayPick').value||kstDate(),box=$('#slots
         ${s.video?`<div class="slotrow" style="margin-top:10px;background:#f0f6ff;border-color:#c7dcff">
           <div class="hd"><b style="color:var(--fb)">📘 페이스북</b>${fb.status==='draft'?'<span class="pill ok">초안 올라감</span>':'<span class="pill wait">직접 올리기</span>'}</div>
           <div class="sub">${fb.status==='draft'?'페이스북 앱(또는 Meta Business Suite) → 콘텐츠 → <b>초안</b>에서 이 영상을 열고 <b>AI 정보 표시를 켠 뒤 게시</b>하세요. 게시 후 아래 고정댓글을 달고 고정하세요.':'영상을 저장해서 페이스북 앱에서 릴스로 올려 주세요. <b>AI 정보 표시를 꼭 켜고</b>, 아래 캡션과 고정댓글을 붙여 넣으세요.'+(fb.error?`<br><span style="color:var(--bad)">(${esc(fb.error.slice(0,120))})</span>`:'')}</div>
+          <div class="row" style="margin:8px 0"><button class="btn fb small" data-fbshare>📱 페이스북 앱으로 보내기</button><span class="sub" data-fbmsg></span></div>
           <div class="copybox"><div class="row" style="justify-content:space-between"><span class="sub">캡션</span><button class="btn ghost small" data-copy="cap">복사</button></div><textarea readonly data-t="cap">${esc(fbCap)}</textarea></div>
           <div class="copybox"><div class="row" style="justify-content:space-between"><span class="sub">고정댓글 (링크)</span><button class="btn ghost small" data-copy="pin">복사</button></div><textarea readonly data-t="pin">${esc(fbPin)}</textarea></div>
         </div>`:''}
@@ -162,6 +170,15 @@ async function loadToday(){const ds=$('#dayPick').value||kstDate(),box=$('#slots
       const pl=d.querySelector('[data-play]');if(pl)pl.onclick=async()=>{pl.textContent='불러오는 중…';const u=await rawUrl(s.video);pl.textContent='▶ 영상 보기';if(u)zoomVid(u)};
       const dl=d.querySelector('[data-dl]');if(dl)dl.onclick=async()=>{dl.textContent='불러오는 중…';const u=await rawUrl(s.video);dl.textContent='영상 저장';const a=document.createElement('a');a.href=u;a.download=`${sl.character}_${ds}_${sl.key}.mp4`;a.click()};
       const td=d.querySelector('[data-tdl]');if(td)td.onclick=async()=>{const u=await rawUrl(s.thumb);const a=document.createElement('a');a.href=u;a.download=`썸네일_${sl.character}_${ds}_${sl.key}.png`;a.click()};
+      const fsb=d.querySelector('[data-fbshare]');if(fsb){let file=null;const msg=d.querySelector('[data-fbmsg]');
+        fsb.onclick=async()=>{
+          if(!navigator.canShare){msg.textContent='이 기기는 바로 보내기를 지원하지 않아요. 영상 저장을 눌러 주세요.';return}
+          if(!file){fsb.disabled=true;msg.textContent='영상 준비 중… (몇 초)';try{const r=await gh(s.video,{raw:true});const b=await r.blob();file=new File([b],`${sl.character}_${ds}.mp4`,{type:'video/mp4'})}catch(e){msg.textContent='영상을 못 불러왔어요.';fsb.disabled=false;return}
+            fsb.disabled=false;
+            if(!navigator.canShare({files:[file]})){msg.textContent='이 기기는 영상 보내기를 지원하지 않아요. 영상 저장을 눌러 주세요.';return}
+            fsb.textContent='📤 지금 보내기 (한 번 더 누르세요)';msg.textContent='준비됐어요.';return}
+          try{await navigator.clipboard.writeText(fbCap)}catch(e){}
+          try{await navigator.share({files:[file]});msg.textContent='캡션은 복사돼 있어요. 페이스북에서 붙여 넣고 AI 표시를 켜 주세요.'}catch(e){if(e.name!=='AbortError')msg.textContent='보내기를 못 했어요: '+e.message}}}
       d.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(d.querySelector(`[data-t="${b.dataset.copy}"]`).value,b));
       d.querySelectorAll('[data-retry]').forEach(b=>b.onclick=async()=>{const what=b.dataset.retry;
         if(what==='video'&&!confirm('이 영상을 다시 만들까요? Kling 유닛이 다시 들어요(약 25~35유닛).'))return;
