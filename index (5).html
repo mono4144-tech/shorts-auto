@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>쇼츠 자동 관리</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#f6f4f0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="쇼츠관리">
+<style>
+:root{--bg:#f6f4f0;--card:#fff;--ink:#1d1b18;--sub:#6f6a62;--line:#e6e1d8;--accent:#c2410c;--accent2:#fff1e8;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--fb:#1877f2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);z-index:5}
+.top{max-width:860px;margin:0 auto;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-weight:800;font-size:18px;margin-right:auto}.logo span{color:var(--accent)}
+nav{display:flex;gap:4px}nav button{border:0;background:none;padding:8px 10px;border-radius:8px;font:inherit;color:var(--sub);cursor:pointer}
+nav button.on{background:var(--ink);color:#fff}
+main{max-width:860px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+h2{font-size:16px;margin:0 0 10px}h3{font-size:15px;margin:0}
+.sub{color:var(--sub);font-size:13px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:9px 14px;font:inherit;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;text-decoration:none}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.small{padding:5px 10px;font-size:13px;border-radius:8px}
+.btn.fb{background:var(--fb)}.btn:disabled{opacity:.45;cursor:not-allowed}
+input,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+textarea{min-height:90px;resize:vertical;font-size:14px}
+.notice{padding:10px 12px;border-radius:10px;background:var(--accent2);color:var(--accent);font-size:14px;margin-top:8px}
+.good{background:var(--okbg);color:var(--ok)}.badn{background:var(--badbg);color:var(--bad)}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:#eef2f7;color:#334155}
+.pill.ok{background:var(--okbg);color:var(--ok)}.pill.bad{background:var(--badbg);color:var(--bad)}.pill.wait{background:var(--accent2);color:var(--accent)}
+.slot{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start}
+@media(max-width:560px){.slot{grid-template-columns:96px 1fr}}
+.thumb{width:100%;aspect-ratio:9/16;border-radius:10px;background:#222;object-fit:cover;display:block;cursor:pointer}
+.day{margin-bottom:14px}.day>b{display:block;margin:4px 0 8px;font-size:15px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cand{border:3px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;cursor:pointer;position:relative}
+.cand.on{border-color:var(--ok);box-shadow:0 0 0 3px var(--okbg)}
+.cand img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#eee}
+.cand .cap{padding:6px 8px;font-size:12px;color:var(--sub);line-height:1.35}
+.cand .chk{position:absolute;top:8px;left:8px;background:var(--ok);color:#fff;font-weight:800;border-radius:99px;padding:2px 9px;font-size:13px}
+.slotrow{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px;background:#fcfbf9}
+.slotrow .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.cand{user-select:none;cursor:grab}.cand.droptgt{border-color:#2563eb;box-shadow:0 0 0 3px #dbeafe}
+.hide{display:none!important}.zoom{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:20;padding:12px}
+.zoom img,.zoom video{max-height:92vh;max-width:100%;border-radius:12px}
+.weeks{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}.weeks button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 12px;font:inherit;cursor:pointer}
+.weeks button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.copybox{margin-top:8px}.copybox textarea{min-height:70px}
+</style>
+</head>
+<body>
+<header><div class="top"><div class="logo">쇼츠 <span>자동 관리</span></div>
+<nav><button data-tab="today" class="on">오늘</button><button data-tab="pick">이미지 고르기</button><button data-tab="set">설정</button></nav></div></header>
+<main>
+<div id="bal" class="card sub hide" style="padding:10px 14px"></div>
+<div id="cost" class="card sub hide" style="padding:10px 14px"></div>
+
+<section id="tab-today">
+  <div class="row" style="justify-content:space-between;margin-bottom:8px"><b id="todayTitle">오늘</b>
+    <div class="row"><input type="date" id="dayPick" style="width:auto;padding:6px 8px"><button class="btn ghost small" id="reload">새로고침</button></div></div>
+  <div id="slots"></div>
+</section>
+
+<section id="tab-pick" class="hide">
+  <div class="card"><h2>옷·배경 이미지 고르기</h2>
+    <div class="sub">영상마다 후보 2장 중 하나를 눌러 고르세요. 안 고르면 왼쪽(1번) 이미지로 만들어요. 둘 다 별로면 <b>다시 만들기</b>를 누르세요 (1~3분 뒤 새 후보가 나와요, 장당 약 60원).</div>
+    <div class="weeks" id="weeks" style="margin-top:10px"></div>
+    <div id="pickMsg"></div>
+  </div>
+  <div id="pickDays"></div>
+</section>
+
+<section id="tab-set" class="hide">
+  <div class="card"><h2>GitHub 연결</h2>
+    <div class="sub">쇼츠 제작소에 넣은 것과 같은 GitHub 토큰(github_pat_…)을 넣어 주세요. 이 기기 브라우저에만 저장돼요. 핸드폰에서도 한 번 넣어 주면 돼요.</div>
+    <label class="sub" style="display:block;margin-top:10px">토큰</label><input type="password" id="tok" placeholder="github_pat_...">
+    <p></p><button class="btn" id="saveTok">저장</button> <button class="btn" id="copyTok">토큰 복사</button> <span id="tokMsg" class="sub"></span>
+  </div>
+  <div class="card"><h2>자동 업로드 멈추기</h2>
+    <div class="sub">멈추면 내일부터 영상을 만들지도, 올리지도 않아요. 이미 예약된 글은 업리카에서 지워야 해요.</div>
+    <p></p><button class="btn ghost" id="pauseBtn">…</button> <span id="pauseMsg" class="sub"></span>
+  </div>
+  <div class="card"><h2>Kling 유닛 가격</h2>
+    <div class="sub">충전할 때 낸 금액 ÷ 받은 유닛 수를 넣어 주세요 (예: 1,000유닛을 140,000원에 샀다면 140). '오늘' 탭의 사용 금액 계산에 써요.</div>
+    <p></p><input id="unitWon" type="number" min="0" step="0.1" placeholder="1유닛당 원" style="max-width:160px"> <button class="btn" id="saveWon">저장</button> <span id="wonMsg" class="sub"></span>
+  </div>
+  <div class="card"><h2>올리는 시간</h2><div id="slotInfo" class="sub"></div></div>
+</section>
+</main>
+<div class="zoom hide" id="zoom"></div>
+
+<script>
+const OWNER='mono4144-tech',REPO='shorts-maker';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const store={get:k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+let TOK=store.get('sa_tok');
+const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const enc=p=>p.split('/').map(encodeURIComponent).join('/');
+async function gh(path,opt={}){const r=await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${enc(path)}`+(opt.q||''),{method:opt.method||'GET',cache:'no-store',
+  headers:{Authorization:'Bearer '+TOK,Accept:opt.raw?'application/vnd.github.raw':'application/vnd.github+json'},body:opt.body?JSON.stringify(opt.body):undefined});
+  if(r.status===404)return null;if(!r.ok)throw new Error('GitHub '+r.status+': '+(await r.text()).slice(0,160));return opt.raw?r:r.json()}
+const b64utf=t=>{const b=new TextEncoder().encode(t);let s='';for(let i=0;i<b.length;i+=32768)s+=String.fromCharCode.apply(null,b.subarray(i,i+32768));return btoa(s)};
+const unb64=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,''))));
+async function readJson(path){const m=await gh(path);if(!m)return [null,null];return [JSON.parse(unb64(m.content)),m.sha]}
+async function writeJson(path,data,sha,msg){return gh(path,{method:'PUT',body:{message:msg,content:b64utf(JSON.stringify(data,null,1)+'\n'),...(sha?{sha}:{})}})}
+const IS_PHONE=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function toast(t){const x=document.createElement('div');x.textContent=t;x.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:10px;z-index:9999;font-size:14px;max-width:90vw';document.body.appendChild(x);setTimeout(()=>x.remove(),3500)}
+const blobs={};async function rawUrl(path){if(blobs[path])return blobs[path];const r=await gh(path,{raw:true});if(!r)return '';const u=URL.createObjectURL(await r.blob());blobs[path]=u;return u}
+const kstDate=(d=new Date())=>new Date(d.getTime()+9*3600e3).toISOString().slice(0,10);
+const addDays=(ds,n)=>{const d=new Date(ds+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const mondayOf=ds=>{const d=new Date(ds+'T00:00:00Z'),w=(d.getUTCDay()+6)%7;return addDays(ds,-w)};
+const WD=['일','월','화','수','목','금','토'],fmtDay=ds=>{const d=new Date(ds+'T00:00:00Z');return `${d.getUTCMonth()+1}/${d.getUTCDate()} (${WD[d.getUTCDay()]})`};
+const NAMES={'palja-1':'할매 ①','palja-2':'할매 ②','unhae-1':'운해현'};
+let CFG=null,CFGSHA=null;
+
+$$('nav button').forEach(b=>b.onclick=()=>{$$('nav button').forEach(x=>x.classList.toggle('on',x===b));$$('main section').forEach(s=>s.classList.toggle('hide',s.id!=='tab-'+b.dataset.tab));
+  if(b.dataset.tab==='pick')loadPick();if(b.dataset.tab==='today')loadToday();if(b.dataset.tab==='set')renderSet()});
+$('#zoom').onclick=e=>{if(e.target.tagName!=='VIDEO'){$('#zoom').classList.add('hide');$('#zoom').innerHTML=''}};
+function zoomImg(u){$('#zoom').innerHTML=`<img src="${u}">`;$('#zoom').classList.remove('hide')}
+function zoomVid(u){$('#zoom').innerHTML=`<video src="${u}" controls autoplay playsinline></video>`;$('#zoom').classList.remove('hide')}
+async function copy(t,b){try{await navigator.clipboard.writeText(t);const o=b.textContent;b.textContent='복사됨';setTimeout(()=>b.textContent=o,1200)}catch(e){alert('복사가 막혀 있어요. 칸을 길게 눌러 복사해 주세요.')}}
+
+/* ── 오늘 ── */
+$('#dayPick').value=kstDate();$('#dayPick').onchange=loadToday;$('#reload').onclick=()=>{loadToday();loadBal()};
+function stepPill(st){if(st.error&&st.step!=='done')return `<span class="pill bad">문제 있음</span>`;
+  return {undefined:'<span class="pill">기다리는 중</span>',making:'<span class="pill wait">영상 만드는 중…</span>',video:'<span class="pill wait">썸네일 만드는 중</span>',thumb:'<span class="pill wait">업로드 준비</span>',
+    posted:'<span class="pill ok">인스타·틱톡 예약됨</span>',done:'<span class="pill ok">인스타·틱톡 예약됨</span>',failed_video:'<span class="pill bad">영상 실패</span>',
+    hold_lang:'<span class="pill bad">중국어 섞임 · 업로드 멈춤</span>',redo:'<span class="pill wait">장면 다시 만드는 중…</span>'}[st.step]||`<span class="pill">${esc(st.step)}</span>`}
+let BAL=null;
+function renderCost(ds,st){const el=$('#cost');if(!el)return;const sl=(st&&st.slots)||{};let units=0,n=0;
+  for(const k in sl){const u=Number(sl[k].units||0);if(u>0){units+=u;n++}}
+  const won=CFG&&CFG.kling_won_per_unit?Number(CFG.kling_won_per_unit):0;
+  const rem=BAL?Math.floor(BAL.remaining):null,perDay=((CFG&&CFG.slots)||[]).length*35;
+  el.classList.remove('hide');
+  el.innerHTML=`<b>${ds===kstDate()?'오늘':fmtDay(ds)} 사용</b> · 영상 ${n}개 · Kling <b>${units.toFixed(1)}</b>유닛`+
+    (won?` · 약 <b>${Math.round(units*won).toLocaleString()}원</b>`:` · <span class="sub">금액은 설정 탭에 유닛 가격을 넣으면 보여요</span>`)+
+    (rem!=null?`<br>남은 유닛 <b>${rem.toLocaleString()}</b>${won?` (약 ${Math.round(rem*won).toLocaleString()}원어치)`:''} · 하루 약 ${perDay}유닛 쓰면 <b>${Math.floor(rem/perDay)}일</b> 버텨요`+(rem<perDay*2?' <span style="color:var(--bad);font-weight:700">· 충전해 주세요</span>':''):'')}
+async function loadToday(){const ds=$('#dayPick').value||kstDate(),box=$('#slots');$('#todayTitle').textContent=fmtDay(ds)+(ds===kstDate()?' · 오늘':'');
+  box.innerHTML='<div class="sub">불러오는 중…</div>';
+  try{const [st]=await readJson(`auto/state/${ds}.json`);const [daily]=await readJson(`daily/${ds}.json`);if(!CFG)[CFG,CFGSHA]=await readJson('auto/config.json');
+    const slots=(CFG&&CFG.slots)||[];box.innerHTML='';
+    if(!daily)box.insertAdjacentHTML('beforeend',`<div class="card notice">이 날 대본이 아직 shorts-maker로 넘어오지 않았어요. 매일 새벽 5시 반쯤 넘어와요.</div>`);
+    if(st&&st.error)box.insertAdjacentHTML('beforeend',`<div class="card notice badn">${esc(st.error)}</div>`);
+    renderCost(ds,st);
+    for(const sl of slots){const s=((st&&st.slots)||{})[sl.key]||{};const set=daily?(daily.sets||[]).find(x=>x.id===`${sl.account}-${ds.replace(/-/g,'')}-${sl.set}`):null;
+      const d=document.createElement('div');d.className='card';
+      const fb=s.fb||{},fbCap=fb.caption||(set&&set.fb&&set.fb.caption)||'',fbPin=fb.pin||(set&&set.fb&&set.fb.pin)||'';
+      d.innerHTML=`<div class="slot"><div><img class="thumb" alt=""></div><div>
+        <div class="row" style="justify-content:space-between"><h3>${esc(NAMES[sl.key]||sl.key)} · ${esc(sl.time)}</h3>${stepPill(s)}</div>
+        <div class="sub" style="margin-top:2px">${esc(set?`${set.zodiac} · ${set.topic} · 키워드 '${set.keyword}'`:'')}</div>
+        ${s.outfit?`<div class="sub">👗 ${esc(s.outfit)}${s.bg?' · 🏞 '+esc(s.bg):''}${s.image_auto?' (자동 선택)':''}</div>`:''}
+        ${s.thumb_text?`<div class="sub">🖼 썸네일: ${esc(s.thumb_text)}</div>`:''}
+        ${s.units?`<div class="sub">⏱ ${s.seconds}초 · ${s.units}유닛</div>`:''}
+        ${s.error?`<div class="notice badn">${esc(s.error)}</div>`:''}
+        ${s.note?`<div class="notice">${esc(s.note)}</div>`:''}
+        ${s.step==='hold_lang'?`<div class="notice badn"><b>중국어로 들리는 장면이 있어서 업로드를 멈췄어요.</b> 영상 보기로 들어 보고 골라 주세요.
+          ${(s.lang_bad||[]).map(b=>`<div style="margin-top:6px"><b>${esc(b.scene)}번 장면</b> · 대본: ${esc(b.line)}<br><span class="sub">들린 소리: ${esc(b.heard)}</span><br>
+            <button class="btn small" data-redo="${esc(b.scene)}" style="margin-top:4px">${esc(b.scene)}번 장면만 다시 만들기 (약 7~9유닛)</button></div>`).join('')}
+          <div style="margin-top:8px"><button class="btn ghost small" data-go>괜찮아요, 그대로 올리기</button></div></div>`:''}
+        <div class="row" style="margin-top:8px">
+          ${s.video?'<button class="btn ghost small" data-play>▶ 영상 보기</button><button class="btn ghost small" data-dl>영상 저장</button>':''}
+          ${s.thumb?'<button class="btn ghost small" data-tdl>썸네일 저장</button>':''}
+          ${s.step==='failed_video'?'<button class="btn small" data-retry="video">영상 다시 만들기</button>':''}
+          ${(s.step==='thumb'||((s.step==='posted'||s.step==='done')&&s.error))?'<button class="btn small" data-retry="upload">업로드 다시</button>':''}
+        </div>
+        ${s.video?`<div class="slotrow" style="margin-top:10px;background:#f0f6ff;border-color:#c7dcff">
+          <div class="hd"><b style="color:var(--fb)">📘 페이스북</b>${fb.status==='draft'?'<span class="pill ok">초안 올라감</span>':'<span class="pill wait">직접 올리기</span>'}</div>
+          <div class="sub">${fb.status==='draft'?'페이스북 앱(또는 Meta Business Suite) → 콘텐츠 → <b>초안</b>에서 이 영상을 열고 <b>AI 정보 표시를 켠 뒤 게시</b>하세요. 게시 후 아래 고정댓글을 달고 고정하세요.':'영상을 저장해서 페이스북 앱에서 릴스로 올려 주세요. <b>AI 정보 표시를 꼭 켜고</b>, 아래 캡션과 고정댓글을 붙여 넣으세요.'+(fb.error?`<br><span style="color:var(--bad)">(${esc(fb.error.slice(0,120))})</span>`:'')}</div>
+          <div class="row" style="margin:8px 0"><button class="btn fb small" data-fbshare>📱 페이스북 앱으로 보내기</button><span class="sub" data-fbmsg></span></div>
+          <div class="copybox"><div class="row" style="justify-content:space-between"><span class="sub">캡션</span><button class="btn ghost small" data-copy="cap">복사</button></div><textarea readonly data-t="cap">${esc(fbCap)}</textarea></div>
+          <div class="copybox"><div class="row" style="justify-content:space-between"><span class="sub">고정댓글 (링크)</span><button class="btn ghost small" data-copy="pin">복사</button></div><textarea readonly data-t="pin">${esc(fbPin)}</textarea></div>
+        </div>`:''}
+      </div></div>`;
+      const img=d.querySelector('.thumb');const tp=s.thumb||s.image;if(tp)rawUrl(tp).then(u=>{if(u){img.src=u;img.onclick=()=>zoomImg(u)}});
+      const pl=d.querySelector('[data-play]');if(pl)pl.onclick=async()=>{pl.textContent='불러오는 중…';const u=await rawUrl(s.video);pl.textContent='▶ 영상 보기';if(u)zoomVid(u)};
+      const dl=d.querySelector('[data-dl]');if(dl){let vf=null;const vname=`${sl.character}_${ds}_${sl.key}.mp4`;
+        dl.onclick=async()=>{
+          if(!vf){dl.disabled=true;dl.textContent='불러오는 중…';
+            try{const r=await gh(s.video,{raw:true});vf=new File([await r.blob()],vname,{type:'video/mp4'})}catch(e){dl.disabled=false;dl.textContent='영상 저장';toast('영상을 못 불러왔어요');return}
+            dl.disabled=false;
+            if(IS_PHONE){dl.textContent='⬇️ 지금 저장 (한 번 더 누르세요)';return}}
+          if(IS_PHONE&&navigator.canShare&&navigator.canShare({files:[vf]})){
+            try{await navigator.share({files:[vf]});dl.textContent='영상 저장'}catch(e){if(e.name!=='AbortError')toast('저장을 못 했어요: '+e.message)}return}
+          const u=URL.createObjectURL(vf);const a=document.createElement('a');a.href=u;a.download=vname;document.body.appendChild(a);a.click();a.remove();dl.textContent='영상 저장';setTimeout(()=>URL.revokeObjectURL(u),60000)}}
+      const td=d.querySelector('[data-tdl]');if(td){let tf=null;const tname=`썸네일_${sl.character}_${ds}_${sl.key}.png`;
+        td.onclick=async()=>{
+          if(!tf){try{const r=await gh(s.thumb,{raw:true});tf=new File([await r.blob()],tname,{type:'image/png'})}catch(e){toast('썸네일을 못 불러왔어요');return}
+            if(IS_PHONE){td.textContent='⬇️ 지금 저장 (한 번 더)';return}}
+          if(IS_PHONE&&navigator.canShare&&navigator.canShare({files:[tf]})){
+            try{await navigator.share({files:[tf]});td.textContent='썸네일 저장'}catch(e){if(e.name!=='AbortError')toast('저장을 못 했어요: '+e.message)}return}
+          const u=URL.createObjectURL(tf);const a=document.createElement('a');a.href=u;a.download=tname;document.body.appendChild(a);a.click();a.remove();td.textContent='썸네일 저장';setTimeout(()=>URL.revokeObjectURL(u),60000)}}
+      const fsb=d.querySelector('[data-fbshare]');if(fsb){let file=null;const msg=d.querySelector('[data-fbmsg]');
+        fsb.onclick=async()=>{
+          if(!navigator.canShare){msg.textContent='이 기기는 바로 보내기를 지원하지 않아요. 영상 저장을 눌러 주세요.';return}
+          if(!file){try{navigator.clipboard.writeText(fbCap)}catch(e){}fsb.disabled=true;msg.textContent='영상 준비 중… (몇 초)';try{const r=await gh(s.video,{raw:true});const b=await r.blob();file=new File([b],`${sl.character}_${ds}.mp4`,{type:'video/mp4'})}catch(e){msg.textContent='영상을 못 불러왔어요.';fsb.disabled=false;return}
+            fsb.disabled=false;
+            if(!navigator.canShare({files:[file]})){msg.textContent='이 기기는 영상 보내기를 지원하지 않아요. 영상 저장을 눌러 주세요.';return}
+            fsb.textContent='📤 지금 보내기 (한 번 더 누르세요)';msg.textContent='준비됐어요.';return}
+          try{await navigator.share({files:[file]});msg.textContent='캡션은 복사돼 있어요. 페이스북에서 붙여 넣고 AI 표시를 켜 주세요.'}catch(e){if(e.name!=='AbortError')msg.textContent='보내기를 못 했어요: '+e.message}}}
+      d.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(d.querySelector(`[data-t="${b.dataset.copy}"]`).value,b));
+      d.querySelectorAll('[data-retry]').forEach(b=>b.onclick=async()=>{const what=b.dataset.retry;
+        if(what==='video'&&!confirm('이 영상을 다시 만들까요? Kling 유닛이 다시 들어요(약 25~35유닛).'))return;
+        b.disabled=true;try{const id=Date.now();await writeJson(`auto/requests/${id}.json`,{date:ds,slot:sl.key,what},null,'retry '+sl.key);b.textContent='접수됐어요 (몇 분 걸려요)'}catch(e){alert(e.message);b.disabled=false}});
+      const sendReq=async(b,body,msg)=>{b.disabled=true;try{await writeJson(`auto/requests/${Date.now()}.json`,Object.assign({date:ds,slot:sl.key},body),null,msg);b.textContent='접수됐어요 (몇 분 걸려요)';d.querySelectorAll('[data-redo],[data-go]').forEach(x=>x.disabled=true)}catch(e){alert(e.message);b.disabled=false}};
+      d.querySelectorAll('[data-redo]').forEach(b=>b.onclick=()=>{const k=b.dataset.redo;if(!confirm(`${k}번 장면만 다시 만들까요? Kling 유닛이 약 7~9 들어요. 다 되면 한 번 더 소리를 확인하고 문제없으면 바로 올려요.`))return;sendReq(b,{what:'redo_scene',scene:Number(k)},`redo scene ${k} ${sl.key}`)});
+      const go=d.querySelector('[data-go]');if(go)go.onclick=()=>{if(!confirm('이대로 인스타·틱톡에 올릴까요? (예약 시간이 지났으면 바로 올라가요)'))return;sendReq(go,{what:'go'},`go ${sl.key}`)};
+      box.appendChild(d)}
+    if(!slots.length)box.innerHTML='<div class="card sub">설정을 불러오지 못했어요.</div>';
+  }catch(e){box.innerHTML=`<div class="card notice badn">불러오지 못했어요: ${esc(e.message)}<br>설정 탭에서 토큰을 확인해 주세요.</div>`}}
+
+/* ── 이미지 고르기 ── */
+/* 이미지 한 장씩 마우스로 끌어서 같은 캐릭터의 다른 자리에 놓으면 두 이미지가 자리를 바꾼다.
+   화면은 다시 그리지 않고 그 자리에서 바로 바뀌며(맨 위로 안 올라감), 저장은 뒤에서 순서대로 한다.
+   ✓(고른 표시)는 자리에 남는다. 이미지는 지우거나 새로 만들지 않는다. */
+const charOf=k=>String(k).split('-')[0];
+async function updPlan(fn,msg){let last;for(let t=0;t<4;t++){try{const [pl,s2]=await readJson(`plan/${WEEK}.json`);fn(pl);
+  await writeJson(`plan/${WEEK}.json`,pl,s2,msg);return}catch(err){last=err;if(!/409|422|sha/i.test(err.message))throw err;await new Promise(r=>setTimeout(r,1500*(t+1)))}}throw last}
+let QUEUE=Promise.resolve();const enqueue=f=>(QUEUE=QUEUE.then(f,f));
+const showErr=m=>{$('#pickMsg').innerHTML=`<div class="notice badn">${esc(m)}</div>`};
+function paintCand(el){const {e,i}=el.__ctx,c=e.cands[i];el.classList.toggle('on',e.chosen===i);
+  el.querySelector('.chk').style.display=e.chosen===i?'':'none';
+  el.querySelector('.cap').innerHTML=`${i+1}. 👗 ${esc(c.o)}<br>🏞 ${esc(c.b||'')}`;
+  const img=el.querySelector('img');if(img.dataset.p!==c.img){img.dataset.p=c.img;img.removeAttribute('src');rawUrl(c.img).then(u=>{if(u&&img.dataset.p===c.img)img.src=u})}}
+function paintSlot(r){const e=r.__e,p=r.querySelector('[data-pill]');p.className='pill'+(e.chosen==null?'':' ok');p.textContent=e.chosen==null?'안 고름 → 1번':'골랐어요';
+  r.querySelectorAll('.cand').forEach(paintCand)}
+function doMove(a,b){const A=a.__ctx,B=b.__ctx,ca=A.e.cands[A.i],cb=B.e.cands[B.i];
+  A.e.cands[A.i]=cb;B.e.cands[B.i]=ca;paintCand(a);paintCand(b);
+  enqueue(()=>updPlan(pl=>{const X=pl.days[A.ds][A.key].cands,Y=pl.days[B.ds][B.key].cands;
+      if(X[A.i].img!==ca.img||Y[B.i].img!==cb.img)throw new Error('다른 기기에서 바뀐 것 같아요. 새로고침해 주세요');X[A.i]=cb;Y[B.i]=ca},
+    `move ${A.ds} ${A.key}#${A.i+1} <-> ${B.ds} ${B.key}#${B.i+1}`)
+    .catch(err=>{A.e.cands[A.i]=ca;B.e.cands[B.i]=cb;paintCand(a);paintCand(b);showErr('옮기지 못했어요. 잠시 뒤 다시 해 주세요. ('+err.message.slice(0,100)+')')}))}
+/* 마우스 끌기 */
+let DR=null,JUSTDRAGGED=false;
+const validTarget=t=>t&&DR&&t!==DR.src&&t.__ctx&&charOf(t.__ctx.key)===charOf(DR.src.__ctx.key);
+document.addEventListener('pointermove',ev=>{if(!DR)return;
+  if(!DR.on){if(Math.hypot(ev.clientX-DR.x,ev.clientY-DR.y)<6)return;DR.on=true;
+    const g=document.createElement('img');g.src=DR.src.querySelector('img').src||'';g.style.cssText='position:fixed;width:110px;aspect-ratio:2/3;object-fit:cover;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:.9;pointer-events:none;z-index:50;background:#ddd';
+    document.body.appendChild(g);DR.g=g;DR.src.style.opacity=.35;document.body.style.userSelect='none'}
+  DR.g.style.left=(ev.clientX-55)+'px';DR.g.style.top=(ev.clientY-82)+'px';
+  const t=(document.elementFromPoint(ev.clientX,ev.clientY)||{}).closest?.('.cand');const v=validTarget(t)?t:null;
+  if(DR.t!==v){if(DR.t)DR.t.classList.remove('droptgt');if(v)v.classList.add('droptgt');DR.t=v}
+  if(ev.clientY<70)window.scrollBy(0,-18);else if(ev.clientY>innerHeight-70)window.scrollBy(0,18)});
+document.addEventListener('pointerup',()=>{if(!DR)return;const d=DR;DR=null;if(!d.on)return;
+  JUSTDRAGGED=true;setTimeout(()=>JUSTDRAGGED=false,50);d.g.remove();d.src.style.opacity=1;document.body.style.userSelect='';
+  if(d.t){d.t.classList.remove('droptgt');doMove(d.src,d.t)}});
+let WEEK=mondayOf(addDays(kstDate(),1));
+function renderWeeks(){const cur=mondayOf(kstDate()),list=[cur,addDays(cur,7)];
+  $('#weeks').innerHTML=list.map(m=>`<button data-m="${m}" class="${m===WEEK?'on':''}">${m===cur?'이번 주':'다음 주'} (${fmtDay(m)}~)</button>`).join('');
+  $$('#weeks button').forEach(b=>b.onclick=()=>{WEEK=b.dataset.m;loadPick()})}
+async function loadPick(){renderWeeks();const box=$('#pickDays'),y=window.scrollY;if(!box.children.length)box.innerHTML='<div class="sub">불러오는 중…</div>';$('#pickMsg').innerHTML='';
+  try{let [plan]=await readJson(`plan/${WEEK}.json`);
+    if(!plan||!Object.keys(plan.days||{}).length){box.innerHTML='';$('#pickMsg').innerHTML=`<div class="notice">이 주 이미지 후보가 아직 없어요. 다음 주 후보는 일요일 새벽 1시에 자동으로 만들어져요.<p></p><button class="btn small" id="mkWeek">지금 만들기 (약 40장 · 2,500원쯤)</button></div>`;
+      $('#mkWeek').onclick=async e=>{e.target.disabled=true;await writeJson(`plan/requests/${Date.now()}.json`,{type:'week',monday:WEEK},null,'make week '+WEEK);e.target.textContent='만드는 중이에요. 5~10분 뒤 새로고침해 주세요.'};return}
+    const out=document.createDocumentFragment(),today=kstDate();
+    const hint=document.createElement('div');hint.className='sub';hint.style.margin='0 2px 8px';
+    hint.innerHTML='이미지를 한 번 누르면 선택, 다시 누르면 취소예요. 크게 보려면 두 번 누르세요. <b>이미지를 마우스로 끌어서 다른 이미지 위에 놓으면 두 장이 자리를 바꿔요</b> (같은 캐릭터끼리만, 파란 테두리가 뜨면 놓으면 돼요). ✓ 표시는 자리에 그대로 남아요.';out.appendChild(hint);
+    for(const ds of Object.keys(plan.days).sort()){if(ds<today)continue;const day=document.createElement('div');day.className='card day';day.innerHTML=`<b>${fmtDay(ds)}${ds===today?' · 오늘':''}</b>`;
+      for(const key of Object.keys(plan.days[ds]).sort()){const e=plan.days[ds][key];const r=document.createElement('div');r.className='slotrow';r.__e=e;
+        r.innerHTML=`<div class="hd"><b>${esc(NAMES[key]||key)}</b><span class="sub">${esc(e.time||'')}</span><span data-pill></span><span style="margin-left:auto"></span><button class="btn ghost small" data-regen>다시 만들기</button></div><div class="pair"></div>`;
+        const pair=r.querySelector('.pair');
+        e.cands.forEach((c,i)=>{const el=document.createElement('div');el.className='cand';el.__ctx={ds,key,e,i};
+          el.innerHTML='<span class="chk">✓ 이걸로</span><img alt="" draggable="false"><div class="cap"></div>';
+          el.addEventListener('pointerdown',ev=>{if(ev.pointerType!=='mouse'||ev.button!==0)return;ev.preventDefault();DR={src:el,x:ev.clientX,y:ev.clientY,on:false}});
+          el.querySelector('img').ondblclick=ev=>{ev.stopPropagation();const s=el.querySelector('img').src;if(s)zoomImg(s)};
+          el.onclick=()=>{if(JUSTDRAGGED)return;const prev=e.chosen,nv=e.chosen===i?null:i;e.chosen=nv;paintSlot(r);
+            enqueue(()=>updPlan(pl=>{pl.days[ds][key].chosen=nv},`pick ${ds} ${key}`).catch(err=>{e.chosen=prev;paintSlot(r);showErr('저장 못 했어요. 잠시 뒤 다시 눌러 주세요. ('+err.message.slice(0,100)+')')}))};
+          pair.appendChild(el)});
+        paintSlot(r);
+        r.querySelector('[data-regen]').onclick=async ev=>{if(!confirm('이 칸 이미지 2장을 새로 만들까요? (약 120원)'))return;ev.target.disabled=true;
+          await writeJson(`plan/requests/${Date.now()}.json`,{date:ds,slot:key},null,`regen ${ds} ${key}`);ev.target.textContent='만드는 중… 2~3분 뒤 새로고침'};
+        day.appendChild(r)}
+      out.appendChild(day)}
+    box.replaceChildren(out);window.scrollTo(0,y);
+    if(plan.errors&&plan.errors.length)$('#pickMsg').innerHTML=`<div class="notice">일부 이미지는 못 만들었어요: ${esc(plan.errors.join(' / ').slice(0,300))}</div>`;
+  }catch(e){box.innerHTML=`<div class="card notice badn">불러오지 못했어요: ${esc(e.message)}</div>`}}
+
+/* ── 설정 ── */
+$('#tok').value=TOK;$('#copyTok').onclick=async()=>{const v=$('#tok').value.trim();if(!v){$('#tokMsg').textContent='저장된 토큰이 없어요.';return}try{await navigator.clipboard.writeText(v);$('#tokMsg').textContent='복사했어요. 카톡 나에게 보내기 등으로 폰에 옮겨 붙여 넣으세요.'}catch(e){$('#tok').type='text';$('#tok').select();$('#tokMsg').textContent='표시된 토큰을 길게 눌러 복사하세요.'}};$('#saveTok').onclick=()=>{TOK=$('#tok').value.trim();store.set('sa_tok',TOK);$('#tokMsg').textContent='저장했어요.';init()};
+async function renderSet(){try{[CFG,CFGSHA]=await readJson('auto/config.json');}catch(e){}if(!CFG)return;
+  $('#unitWon').value=CFG.kling_won_per_unit||'';
+  $('#pauseBtn').textContent=CFG.paused?'▶ 다시 켜기':'⏸ 자동 업로드 멈추기';
+  $('#slotInfo').innerHTML=CFG.slots.map(s=>`${esc(NAMES[s.key]||s.key)} · <b>${esc(s.time)}</b>`).join('<br>')+'<br><br>시간을 바꾸려면 Claude에게 말해 주세요.'}
+$('#saveWon').onclick=async()=>{try{const [c,sh]=await readJson('auto/config.json');const v=Number($('#unitWon').value);c.kling_won_per_unit=v>0?v:null;await writeJson('auto/config.json',c,sh,'kling unit price');CFG=c;$('#wonMsg').textContent='저장했어요.'}catch(e){alert(e.message)}};
+$('#pauseBtn').onclick=async()=>{try{const [c,s]=await readJson('auto/config.json');c.paused=!c.paused;await writeJson('auto/config.json',c,s,c.paused?'pause auto':'resume auto');CFG=c;$('#pauseMsg').textContent=c.paused?'멈췄어요.':'다시 켰어요.';renderSet()}catch(e){alert(e.message)}};
+async function loadBal(){try{const [b]=await readJson('status/balance.json');if(!b)return;BAL=b;const u=Math.floor(b.remaining),el=$('#bal');el.classList.remove('hide');
+  el.innerHTML=`Kling 남은 유닛 <b>${u.toLocaleString()}</b> · 40초 영상 약 ${Math.floor(u/33)}개${u<100?' <span style="color:var(--bad);font-weight:700">· 곧 떨어져요. 충전해 주세요</span>':''}`}catch(e){}}
+function init(){if(!TOK){$$('nav button')[2].click();$('#tokMsg').textContent='처음 한 번 토큰을 넣어 주세요.';return}loadBal().then(loadToday)}
+init();
+</script>
+</body></html>
